@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Rocket Builder (Snap-to-Stack)</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      margin: 0;
+      display: flex;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    #sidebar {
+      width: 200px;
+      background: #f0f0f0;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      box-shadow: 2px 0 5px rgba(0, 0, 0, 0.2);
+    }
+
+    .part {
+      width: 80px;
+      height: 40px;
+      background: #ccc;
+      border: 1px solid #999;
+      cursor: grab;
+      text-align: center;
+      line-height: 40px;
+      user-select: none;
+    }
+
+    #builderArea {
+      flex-grow: 1;
+      position: relative;
+      background: #e6f7ff;
+    }
+
+    .dropped {
+      position: absolute;
+      border: 1px solid black;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div id="sidebar">
+    <div class="part" draggable="true" data-type="nose">Nose</div>
+    <div class="part" draggable="true" data-type="body">Body</div>
+    <div class="part" draggable="true" data-type="fin">Fin</div>
+  </div>
+  <div id="builderArea"></div>
+
+  <script>
+    const parts = document.querySelectorAll(".part");
+    const builderArea = document.getElementById("builderArea");
+    const stack = [];
+
+    parts.forEach(part => {
+      part.addEventListener("dragstart", e => {
+        e.dataTransfer.setData("type", part.dataset.type);
+      });
+    });
+
+    builderArea.addEventListener("dragover", e => {
+      e.preventDefault();
+    });
+
+    builderArea.addEventListener("drop", e => {
+      const type = e.dataTransfer.getData("type");
+      const newPart = document.createElement("div");
+      newPart.className = "dropped";
+      newPart.innerText = type;
+      newPart.style.width = "80px";
+      newPart.style.height = "40px";
+      newPart.style.background = {
+        nose: "lightcoral",
+        body: "lightgray",
+        fin: "lightgreen"
+      }[type] || "white";
+
+      const baseX = builderArea.clientWidth / 2 - 40;
+
+      if (stack.length === 0) {
+        // Place first part at bottom center
+        newPart.style.left = baseX + "px";
+        newPart.style.top = builderArea.clientHeight - 60 + "px";
+      } else {
+        const last = stack[stack.length - 1];
+        const lastY = parseInt(last.style.top);
+        newPart.style.left = baseX + "px";
+        newPart.style.top = (lastY - 40) + "px";
+      }
+
+      builderArea.appendChild(newPart);
+      stack.push(newPart);
+    });
+  </script>
+</body>
+</html>
