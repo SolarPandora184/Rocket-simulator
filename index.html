@@ -2,136 +2,143 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Rocket Builder & Simulator</title>
+  <title>Rocket Simulator</title>
   <style>
     body {
-      font-family: Arial, sans-serif;
-      text-align: center;
       margin: 0;
       padding: 0;
-      background: #e0f7fa;
+      overflow: hidden;
+      font-family: sans-serif;
+      background: linear-gradient(#87CEEB, #ffffff);
     }
-    h1 {
-      background: #00796b;
-      color: white;
-      margin: 0;
-      padding: 1em;
+
+    #logo {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      width: 80px;
+      height: auto;
+      z-index: 10;
     }
-    #builder {
-      margin-top: 20px;
+
+    #simulator {
+      position: absolute;
+      top: 0;
+      left: 0;
     }
-    svg {
-      border: 2px solid #333;
-      background: #fff;
-    }
-    .part {
-      cursor: move;
-    }
-    .controls {
-      margin: 20px auto;
-      max-width: 600px;
-      text-align: left;
-    }
-    .readouts {
-      margin-top: 20px;
-    }
-    .credit {
-      margin-top: 40px;
-      font-size: 0.9em;
-      color: #555;
+
+    #launchButton {
+      position: absolute;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 10px 20px;
+      font-size: 16px;
+      z-index: 10;
+      cursor: pointer;
     }
   </style>
 </head>
 <body>
-  <h1>Rocket Builder & Simulator</h1>
+  <img id="logo" src="logo.png" alt="Rocket Logo" />
 
-  <div id="builder">
-    <svg id="rocket-svg" width="300" height="500" viewBox="0 0 100 200">
-      <!-- Rocket Body -->
-      <rect id="body" class="part" x="45" y="80" width="10" height="60" fill="red" />
-      <!-- Nose Cone -->
-      <polygon id="nose" class="part" points="45,80 55,80 50,60" fill="red" />
-      <!-- Left Fin -->
-      <polygon id="left-fin" class="part" points="45,140 40,150 45,150" fill="red" />
-      <!-- Right Fin -->
-      <polygon id="right-fin" class="part" points="55,140 60,150 55,150" fill="red" />
-    </svg>
-  </div>
-
-  <div class="controls">
-    <button onclick="launch()">Launch</button>
-  </div>
-
-  <div class="readouts">
-    <p id="altitude">Altitude: 0 m</p>
-    <p id="velocity">Velocity: 0 m/s</p>
-    <p id="acceleration">Acceleration: 0 m/s²</p>
-  </div>
-
-  <div class="credit">
-    Built with help from ChatGPT by OpenAI
-  </div>
+  <canvas id="simulator" width="800" height="600"></canvas>
+  <button id="launchButton">Launch</button>
 
   <script>
-    const parts = document.querySelectorAll('.part');
-    let selected = null, offsetX = 0, offsetY = 0;
+    const canvas = document.getElementById('simulator');
+    const ctx = canvas.getContext('2d');
 
-    parts.forEach(part => {
-      part.addEventListener('mousedown', e => {
-        selected = e.target;
-        const rect = selected.getBoundingClientRect();
-        offsetX = e.clientX - rect.left;
-        offsetY = e.clientY - rect.top;
-      });
-    });
+    const rocket = {
+      x: canvas.width / 2 - 10,
+      y: canvas.height - 60,
+      width: 20,
+      height: 60,
+      velocityY: 0,
+      launched: false,
+      falling: false,
+      parachuteDeployed: false
+    };
 
-    document.addEventListener('mousemove', e => {
-      if (selected) {
-        const svg = document.getElementById('rocket-svg');
-        const pt = svg.createSVGPoint();
-        pt.x = e.clientX;
-        pt.y = e.clientY;
-        const svgP = pt.matrixTransform(svg.getScreenCTM().inverse());
-        if (selected.tagName === "rect") {
-          selected.setAttribute("x", svgP.x - offsetX);
-          selected.setAttribute("y", svgP.y - offsetY);
-        } else if (selected.tagName === "polygon") {
-          const points = selected.getAttribute("points").split(" ").map(p => {
-            const [x, y] = p.split(",").map(Number);
-            return [x + svgP.x - offsetX, y + svgP.y - offsetY].join(",");
-          });
-          selected.setAttribute("points", points.join(" "));
+    const gravity = 0.4;
+    const thrust = -10;
+    const parachuteDrag = 0.15;
+
+    function drawRocket() {
+      ctx.fillStyle = 'gray';
+      ctx.fillRect(rocket.x, rocket.y, rocket.width, rocket.height);
+
+      // Flame
+      if (rocket.launched && !rocket.falling) {
+        ctx.beginPath();
+        ctx.moveTo(rocket.x, rocket.y + rocket.height);
+        ctx.lineTo(rocket.x + rocket.width / 2, rocket.y + rocket.height + 20);
+        ctx.lineTo(rocket.x + rocket.width, rocket.y + rocket.height);
+        ctx.fillStyle = 'orange';
+        ctx.fill();
+      }
+
+      // Parachute
+      if (rocket.parachuteDeployed) {
+        ctx.beginPath();
+        ctx.arc(rocket.x + rocket.width / 2, rocket.y - 20, 20, Math.PI, 2 * Math.PI);
+        ctx.fillStyle = 'red';
+        ctx.fill();
+        ctx.beginPath();
+        ctx.moveTo(rocket.x + 2, rocket.y);
+        ctx.lineTo(rocket.x + rocket.width / 2, rocket.y - 10);
+        ctx.lineTo(rocket.x + rocket.width - 2, rocket.y);
+        ctx.stroke();
+      }
+    }
+
+    function updateRocket() {
+      if (rocket.launched) {
+        if (!rocket.falling) {
+          rocket.velocityY += gravity;
+        } else {
+          if (!rocket.parachuteDeployed && rocket.velocityY >= 0) {
+            rocket.parachuteDeployed = true;
+          }
+          rocket.velocityY += rocket.parachuteDeployed ? parachuteDrag : gravity;
         }
+        rocket.y += rocket.velocityY;
+
+        if (rocket.velocityY >= 0 && !rocket.falling) {
+          rocket.falling = true;
+        }
+
+        if (rocket.y + rocket.height >= canvas.height) {
+          rocket.y = canvas.height - rocket.height;
+          rocket.velocityY = 0;
+          rocket.launched = false;
+          rocket.falling = false;
+          rocket.parachuteDeployed = false;
+        }
+      }
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Ground
+      ctx.fillStyle = '#228B22';
+      ctx.fillRect(0, canvas.height - 20, canvas.width, 20);
+
+      drawRocket();
+      updateRocket();
+
+      requestAnimationFrame(draw);
+    }
+
+    document.getElementById('launchButton').addEventListener('click', () => {
+      if (!rocket.launched) {
+        rocket.launched = true;
+        rocket.velocityY = thrust;
       }
     });
 
-    document.addEventListener('mouseup', () => selected = null);
-
-    function launch() {
-      let t = 0;
-      let v = 0;
-      let h = 0;
-      const dt = 0.1;
-      const g = 9.81;
-      const thrust = 50; // N
-      const mass = 1; // kg
-      const burnTime = 2; // s
-
-      const interval = setInterval(() => {
-        const isBurning = t < burnTime;
-        const force = isBurning ? thrust : 0;
-        const a = (force - mass * g) / mass;
-        v += a * dt;
-        h += v * dt;
-        t += dt;
-
-        document.getElementById("altitude").textContent = `Altitude: ${h.toFixed(1)} m`;
-        document.getElementById("velocity").textContent = `Velocity: ${v.toFixed(1)} m/s`;
-        document.getElementById("acceleration").textContent = `Acceleration: ${a.toFixed(1)} m/s²`;
-
-        if (h <= 0 && t > 0.5) clearInterval(interval);
-      }, dt * 1000);
-    }
+    draw();
   </script>
 </body>
 </html>
