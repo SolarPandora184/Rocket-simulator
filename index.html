@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Rocket Simulator</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      text-align: center;
+      background: #cce0ff;
+      margin: 0;
+      padding: 20px;
+    }
+    #controls {
+      margin-bottom: 15px;
+    }
+    label {
+      margin: 0 10px;
+    }
+    canvas {
+      border: 2px solid #333;
+      background: skyblue;
+    }
+    footer {
+      margin-top: 20px;
+      font-size: 0.9em;
+      color: #444;
+    }
+  </style>
+</head>
+<body>
+  <h1>Rocket Simulator</h1>
+  <div id="controls">
+    <label>Motor:
+      <select id="motor">
+        <option value="F32">F32</option>
+        <option value="G80">G80</option>
+        <option value="H180">H180</option>
+      </select>
+    </label>
+    <label>Mass (kg): <input type="number" id="mass" value="1.0" step="0.1" /></label>
+    <button onclick="startSimulation()">Launch</button>
+  </div>
+  <canvas id="simCanvas" width="400" height="600"></canvas>
+
+  <footer>
+    <p>This rocket simulator was created with the help of <strong>ChatGPT</strong>, an AI developed by OpenAI.</p>
+  </footer>
+
+  <script>
+    const canvas = document.getElementById("simCanvas");
+    const ctx = canvas.getContext("2d");
+
+    const motors = {
+      F32: { impulse: 60, burn_time: 1.8 },
+      G80: { impulse: 120, burn_time: 2.1 },
+      H180: { impulse: 250, burn_time: 2.8 }
+    };
+
+    function startSimulation() {
+      const motorName = document.getElementById("motor").value;
+      const mass = parseFloat(document.getElementById("mass").value);
+      const motor = motors[motorName];
+
+      const dt = 0.01;
+      const g = 9.81;
+      const burn = motor.burn_time;
+      const peakThrust = (2 * motor.impulse) / burn;
+
+      let t = 0, v = 0, h = 0;
+      let thrust = 0;
+      let data = [];
+
+      while (true) {
+        if (t < burn) {
+          const mid = burn / 2;
+          if (t < mid) {
+            thrust = peakThrust * (t / mid);
+          } else {
+            thrust = peakThrust * (1 - (t - mid) / mid);
+          }
+        } else {
+          thrust = 0;
+        }
+
+        const drag = 0.5 * 1.225 * v * v * 0.01 * 0.5 * -Math.sign(v);
+        const a = (thrust - mass * g + drag) / mass;
+        v += a * dt;
+        h += v * dt;
+        t += dt;
+
+        data.push({ t, h, v });
+
+        if (h <= 0 && t > 0.5) break;
+      }
+
+      animate(data);
+    }
+
+    function animate(data) {
+      let i = 0;
+      function frame() {
+        if (i >= data.length) return;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        const rocketY = canvas.height - data[i].h * 10 - 50;
+        drawRocket(rocketY);
+
+        ctx.fillStyle = "black";
+        ctx.fillText(`Time: ${data[i].t.toFixed(2)}s`, 10, 20);
+        ctx.fillText(`Alt: ${Math.max(0, data[i].h).toFixed(1)}m`, 10, 40);
+        ctx.fillText(`Vel: ${data[i].v.toFixed(1)}m/s`, 10, 60);
+
+        i++;
+        requestAnimationFrame(frame);
+      }
+      frame();
+    }
+
+    function drawRocket(y) {
+      ctx.fillStyle = "red";
+      ctx.fillRect(190, y, 20, 50); // body
+      ctx.beginPath(); // nose cone
+      ctx.moveTo(190, y);
+      ctx.lineTo(200, y - 20);
+      ctx.lineTo(210, y);
+      ctx.closePath();
+      ctx.fill();
+
+      // fins
+      ctx.fillStyle = "darkred";
+      ctx.beginPath();
+      ctx.moveTo(190, y + 50);
+      ctx.lineTo(180, y + 60);
+      ctx.lineTo(190, y + 55);
+      ctx.fill();
+
+      ctx.beginPath();
+      ctx.moveTo(210, y + 50);
+      ctx.lineTo(220, y + 60);
+      ctx.lineTo(210, y + 55);
+      ctx.fill();
+    }
+  </script>
+</body>
+</html>
