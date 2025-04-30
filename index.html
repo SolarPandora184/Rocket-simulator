@@ -5,149 +5,185 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Rocket Simulator</title>
   <style>
-    body {
+    html, body {
       margin: 0;
-      background: #87CEEB;
+      padding: 0;
       font-family: sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
     }
-    canvas {
-      display: block;
-      margin: 0 auto;
-      background: linear-gradient(#87CEEB, #ffffff);
+    :root {
+      --bg: #ffffff;
+      --text: #000000;
     }
-    #launchButton {
-      position: absolute;
-      top: 20px;
-      left: 50%;
-      transform: translateX(-50%);
+    [data-theme="dark"] {
+      --bg: #121212;
+      --text: #ffffff;
+    }
+    .page {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      padding: 20px;
+    }
+    .visible {
+      display: flex;
+    }
+    button {
       padding: 10px 20px;
-      font-size: 18px;
+      margin: 10px;
+      font-size: 1.2em;
       cursor: pointer;
     }
-    #countdown {
+    #logo {
       position: absolute;
-      top: 70px;
-      left: 50%;
-      transform: translateX(-50%);
-      font-size: 30px;
-      font-weight: bold;
-      color: red;
+      top: 10px;
+      left: 10px;
+      height: 50px;
+      cursor: pointer;
+      transition: transform 0.2s;
+    }
+    #logo:hover {
+      transform: scale(1.05);
+    }
+    #changeLayoutBtn {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+    }
+    #themeToggle {
+      position: fixed;
+      bottom: 10px;
+      left: 10px;
     }
   </style>
 </head>
 <body>
-  <button id="launchButton">Launch</button>
-  <div id="countdown"></div>
-  <canvas id="simCanvas" width="400" height="600"></canvas>
+
+  <img id="logo" src="logo.png" alt="Logo" onclick="goToPage('layoutPage')" />
+
+  <button id="changeLayoutBtn" onclick="goToPage('layoutPage')">Change Layout</button>
+  <label id="themeToggle">
+    Dark Mode:
+    <input type="checkbox" onchange="toggleTheme(this.checked)">
+  </label>
+
+  <div id="layoutPage" class="page visible">
+    <h1>Choose Layout</h1>
+    <button onclick="setLayout('phone')">Phone</button>
+    <button onclick="setLayout('computer')">Computer</button>
+  </div>
+
+  <div id="actionPage" class="page">
+    <h1>Choose Action</h1>
+    <button onclick="goToPage('builderPage')">Build</button>
+    <button onclick="goToPage('preLaunchPage')">Launch</button>
+  </div>
+
+  <div id="preLaunchPage" class="page">
+    <h1>Ready for Launch?</h1>
+    <button onclick="goToPage('builderPage')">Back to Build</button>
+    <button onclick="startCountdown()">Launch</button>
+  </div>
+
+  <div id="builderPage" class="page">
+    <h1>Rocket Builder</h1>
+    <p>Drag and drop parts to build your rocket.</p>
+    <!-- Simple example of SVG rocket part layout -->
+    <svg width="100" height="300">
+      <polygon points="50,0 30,40 70,40" fill="gray" />
+      <rect x="35" y="40" width="30" height="150" fill="red" />
+      <polygon points="35,190 0,250 35,250" fill="gray" />
+      <polygon points="65,190 100,250 65,250" fill="gray" />
+    </svg>
+    <button onclick="promptSave()">Save Rocket</button>
+  </div>
+
+  <div id="launchPage" class="page">
+    <h1>Launching...</h1>
+    <p id="countdown">3</p>
+    <canvas id="launchCanvas" width="400" height="600" style="border:1px solid;"></canvas>
+  </div>
 
   <script>
-    const canvas = document.getElementById("simCanvas");
-    const ctx = canvas.getContext("2d");
-
-    let rocket = {
-      x: canvas.width / 2 - 10,
-      y: canvas.height - 60,
-      width: 20,
-      height: 60,
-      velocity: 0,
-      acceleration: 0,
-      mass: 1.5, // kg
-      thrust: 15, // N
-      burnTime: 2, // seconds
-      drag: 0.4,
-      deployedParachute: false,
-    };
-
-    const g = 9.81; // gravity
-    let time = 0;
-    let dt = 0.02;
-    let maxY = rocket.y;
-    let flying = false;
-    let countdown = 3;
-    let parachuteImage = new Image();
-    parachuteImage.src = "https://upload.wikimedia.org/wikipedia/commons/0/00/Parachute_icon.png";
-
-    function drawRocket() {
-      ctx.fillStyle = "gray";
-      ctx.fillRect(rocket.x, rocket.y, rocket.width, rocket.height);
+    const pages = ['layoutPage', 'actionPage', 'preLaunchPage', 'builderPage', 'launchPage'];
+    function goToPage(id) {
+      pages.forEach(p => document.getElementById(p).classList.remove('visible'));
+      document.getElementById(id).classList.add('visible');
     }
 
-    function drawParachute() {
-      if (rocket.deployedParachute) {
-        ctx.drawImage(parachuteImage, rocket.x - 15, rocket.y - 40, 50, 50);
-      }
+    function setLayout(type) {
+      localStorage.setItem('layout', type);
+      goToPage('actionPage');
     }
 
-    function updateRocket() {
-      if (time < rocket.burnTime) {
-        rocket.acceleration = rocket.thrust / rocket.mass - g;
-      } else {
-        rocket.acceleration = -g - rocket.drag * rocket.velocity;
-        if (!rocket.deployedParachute && rocket.velocity < -1) {
-          rocket.deployedParachute = true;
-          rocket.drag = 1.8;
-        }
-      }
-
-      rocket.velocity += rocket.acceleration * dt;
-      rocket.y -= rocket.velocity;
-
-      if (rocket.y > canvas.height - 60) {
-        rocket.y = canvas.height - 60;
-        rocket.velocity = 0;
-        flying = false;
-      }
-
-      time += dt;
+    function toggleTheme(isDark) {
+      document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
+      localStorage.setItem('theme', isDark ? 'dark' : 'light');
     }
 
-    function drawScene() {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-      // Ground
-      ctx.fillStyle = "green";
-      ctx.fillRect(0, canvas.height - 20, canvas.width, 20);
-
-      drawRocket();
-      drawParachute();
-    }
-
-    function animate() {
-      if (flying) {
-        updateRocket();
-        drawScene();
-        requestAnimationFrame(animate);
+    function loadTheme() {
+      const saved = localStorage.getItem('theme');
+      if (saved === 'dark') {
+        document.documentElement.setAttribute('data-theme', 'dark');
+        document.querySelector('#themeToggle input').checked = true;
       }
     }
 
     function startCountdown() {
-      document.getElementById("countdown").textContent = countdown;
-      let interval = setInterval(() => {
-        countdown--;
-        if (countdown === 0) {
+      goToPage('launchPage');
+      const countdownEl = document.getElementById('countdown');
+      let count = 3;
+      const audio = new Audio("https://actions.google.com/sounds/v1/alarms/alarm_clock.ogg");
+      const interval = setInterval(() => {
+        countdownEl.textContent = count;
+        if (count === 0) {
           clearInterval(interval);
-          document.getElementById("countdown").textContent = "";
-          flying = true;
-          animate();
-        } else {
-          document.getElementById("countdown").textContent = countdown;
+          audio.play();
+          startLaunch();
         }
+        count--;
       }, 1000);
     }
 
-    document.getElementById("launchButton").addEventListener("click", () => {
-      if (!flying) {
-        rocket.y = canvas.height - 60;
-        rocket.velocity = 0;
-        rocket.acceleration = 0;
-        time = 0;
-        rocket.deployedParachute = false;
-        countdown = 3;
-        startCountdown();
-      }
-    });
+    function startLaunch() {
+      const canvas = document.getElementById("launchCanvas");
+      const ctx = canvas.getContext("2d");
+      let y = 500;
+      const rocket = () => {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = "black";
+        ctx.fillRect(190, y, 20, 50);
+        y -= 2;
+        if (y > 50) {
+          requestAnimationFrame(rocket);
+        } else {
+          showParachute();
+        }
+      };
+      rocket();
+    }
 
-    drawScene();
+    function showParachute() {
+      const ctx = document.getElementById("launchCanvas").getContext("2d");
+      ctx.fillStyle = "red";
+      ctx.beginPath();
+      ctx.arc(200, 50, 30, 0, Math.PI, true);
+      ctx.fill();
+    }
+
+    function promptSave() {
+      const email = prompt("Enter your email to save your rocket:");
+      if (email) {
+        alert("Rocket saved to " + email);
+      } else {
+        alert("Save cancelled.");
+      }
+    }
+
+    window.onload = loadTheme;
   </script>
 </body>
 </html>
