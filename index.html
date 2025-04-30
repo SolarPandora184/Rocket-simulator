@@ -1,189 +1,358 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Rocket Simulator</title>
+  <meta charset="UTF-8">
+  <title>Rocket Builder & Launch Simulator</title>
   <style>
-    html, body {
-      margin: 0;
-      padding: 0;
-      font-family: sans-serif;
-      background-color: var(--bg);
-      color: var(--text);
-    }
-    :root {
-      --bg: #ffffff;
-      --text: #000000;
-    }
-    [data-theme="dark"] {
-      --bg: #121212;
-      --text: #ffffff;
-    }
-    .page {
-      display: none;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      height: 100vh;
-      padding: 20px;
-    }
-    .visible {
-      display: flex;
-    }
-    button {
-      padding: 10px 20px;
-      margin: 10px;
-      font-size: 1.2em;
-      cursor: pointer;
-    }
-    #logo {
-      position: absolute;
-      top: 10px;
-      left: 10px;
-      height: 50px;
-      cursor: pointer;
-      transition: transform 0.2s;
-    }
-    #logo:hover {
-      transform: scale(1.05);
-    }
-    #changeLayoutBtn {
-      position: absolute;
-      top: 10px;
-      right: 10px;
-    }
-    #themeToggle {
-      position: fixed;
-      bottom: 10px;
-      left: 10px;
-    }
+    /* Global styles and theme variables */
+    body { margin: 0; font-family: sans-serif; background: var(--bg); color: var(--text); }
+    :root { --bg: #fff; --text: #000; --accent: #e33; }
+    .dark-theme { --bg: #222; --text: #ddd; --accent: #faa; }
+    .button { padding: 10px 20px; margin: 10px; font-size: 1rem; cursor: pointer; }
+    h1, h2 { margin: 10px; }
+    /* Layout and page containers */
+    .page { display: none; padding: 20px; }
+    #layoutSelection, #actionSelection, #builder, #simulation { text-align: center; }
+    #layoutSelection, #actionSelection { height: 100vh; display: flex; flex-direction: column; justify-content: center; }
+    /* Logo and navigation controls */
+    #logo { position: fixed; top: 10px; left: 10px; font-size: 24px; cursor: pointer;
+             transition: transform 0.2s; user-select: none; }
+    #logo:hover { transform: scale(1.2); }
+    #changeLayout { position: fixed; top: 10px; right: 10px; padding: 5px 10px; font-size: 0.9rem; cursor: pointer; }
+    #themeToggle { position: fixed; bottom: 10px; left: 10px; padding: 5px 10px; font-size: 0.9rem; cursor: pointer; }
+    /* Layout Selection */
+    #layoutSelection button { font-size: 1.5rem; width: 200px; }
+    /* Action Selection */
+    #actionSelection button { font-size: 1.5rem; width: 200px; }
+    /* Builder page */
+    #builderContent { display: flex; justify-content: center; align-items: flex-start; margin-top: 40px; }
+    #partsPanel { width: 100px; margin-right: 20px; }
+    #partsPanel .part { margin: 10px auto; cursor: grab; }
+    #partsPanel .part:active { cursor: grabbing; }
+    .nose { width: 0; height: 0; border-left: 25px solid transparent; border-right: 25px solid transparent; border-bottom: 50px solid var(--accent); }
+    .body { width: 50px; height: 50px; background: gray; margin-bottom: 5px; }
+    .fin  { width: 0; height: 0; border-left: 15px solid transparent; border-right: 15px solid transparent; border-top: 25px solid navy; margin-bottom: 5px; }
+    #assemblyArea { width: 60px; min-height: 200px; border: 2px dashed #888; position: relative; }
+    #assemblyArea .nose { margin-top: -2px; } /* align nose properly */
+    /* Email save form */
+    #saveForm { margin-top: 20px; }
+    #saveForm input { padding: 5px; width: 200px; }
+    /* Launch simulation */
+    #simControls { text-align: center; margin-bottom: 10px; }
+    #simControls label { margin-right: 10px; }
+    #simCanvas { background: #eef; width: 100%; height: 400px; border: 1px solid #666; }
+    /* Status bar */
+    #statusBar { position: fixed; bottom: 0; left: 0; right: 0; background: var(--accent); color: #000; padding: 5px; font-family: monospace; }
   </style>
 </head>
 <body>
 
-  <img id="logo" src="logo.png" alt="Logo" onclick="goToPage('layoutPage')" />
+  <!-- Logo and Theme/Layout Controls -->
+  <div id="logo" onclick="showPage('actionSelection')">🚀 RocketSim</div>
+  <button id="changeLayout" class="button" onclick="showPage('layoutSelection')">Change Layout</button>
+  <button id="themeToggle" onclick="toggleTheme()">Toggle Light/Dark</button>
 
-  <button id="changeLayoutBtn" onclick="goToPage('layoutPage')">Change Layout</button>
-  <label id="themeToggle">
-    Dark Mode:
-    <input type="checkbox" onchange="toggleTheme(this.checked)">
-  </label>
-
-  <div id="layoutPage" class="page visible">
+  <!-- Page: Layout Selection -->
+  <div id="layoutSelection" class="page">
     <h1>Choose Layout</h1>
-    <button onclick="setLayout('phone')">Phone</button>
-    <button onclick="setLayout('computer')">Computer</button>
+    <button class="button" id="phoneBtn">Phone Layout 📱</button>
+    <button class="button" id="computerBtn">Computer Layout 💻</button>
   </div>
 
-  <div id="actionPage" class="page">
+  <!-- Page: Action Selection -->
+  <div id="actionSelection" class="page">
     <h1>Choose Action</h1>
-    <button onclick="goToPage('builderPage')">Build</button>
-    <button onclick="goToPage('preLaunchPage')">Launch</button>
+    <button class="button" id="buildBtn">Build Rocket</button>
+    <button class="button" id="launchBtn">Launch Default Rocket</button>
   </div>
 
-  <div id="preLaunchPage" class="page">
-    <h1>Ready for Launch?</h1>
-    <button onclick="goToPage('builderPage')">Back to Build</button>
-    <button onclick="startCountdown()">Launch</button>
-  </div>
-
-  <div id="builderPage" class="page">
+  <!-- Page: Rocket Builder -->
+  <div id="builder" class="page">
     <h1>Rocket Builder</h1>
-    <p>Drag and drop parts to build your rocket.</p>
-    <!-- Simple example of SVG rocket part layout -->
-    <svg width="100" height="300">
-      <polygon points="50,0 30,40 70,40" fill="gray" />
-      <rect x="35" y="40" width="30" height="150" fill="red" />
-      <polygon points="35,190 0,250 35,250" fill="gray" />
-      <polygon points="65,190 100,250 65,250" fill="gray" />
-    </svg>
-    <button onclick="promptSave()">Save Rocket</button>
+    <div id="builderContent">
+      <div id="partsPanel">
+        <div class="part nose" draggable="true" data-type="nose" title="Nose Cone"></div>
+        <div class="part body" draggable="true" data-type="body" title="Body Segment"></div>
+        <div class="part fin"  draggable="true" data-type="fin"  title="Fin"></div>
+      </div>
+      <div id="assemblyArea"></div>
+    </div>
+    <div id="saveForm">
+      <input type="email" id="emailInput" placeholder="Your Email">
+      <button class="button" id="saveBtn">Save Design (Email)</button>
+      <button class="button" id="launchFromBuilder">Launch</button>
+    </div>
   </div>
 
-  <div id="launchPage" class="page">
-    <h1>Launching...</h1>
-    <p id="countdown">3</p>
-    <canvas id="launchCanvas" width="400" height="600" style="border:1px solid;"></canvas>
+  <!-- Page: Launch Simulation -->
+  <div id="simulation" class="page">
+    <h1>Launch Simulation</h1>
+    <div id="simControls">
+      <label>Mass (kg): <input type="range" id="massSlider" min="0.1" max="5" step="0.1" value="1"> <span id="massVal">1.0</span> kg</label>
+      <label>Motor Class:
+        <select id="motorClass">
+          <option>A</option><option>B</option><option>C</option><option>D</option><option>E</option><option>F</option>
+          <option>G</option><option>H</option><option>I</option><option>J</option><option>K</option><option>L</option><option>M</option>
+        </select>
+      </label>
+      <button class="button" id="startLaunch">Launch</button>
+    </div>
+    <canvas id="simCanvas" width="500" height="400"></canvas>
   </div>
 
-  <script>
-    const pages = ['layoutPage', 'actionPage', 'preLaunchPage', 'builderPage', 'launchPage'];
-    function goToPage(id) {
-      pages.forEach(p => document.getElementById(p).classList.remove('visible'));
-      document.getElementById(id).classList.add('visible');
-    }
+  <!-- Bottom Status Bar -->
+  <div id="statusBar">Time: 0.0 s | Altitude: 0.0 m | Speed: 0.0 m/s</div>
 
-    function setLayout(type) {
-      localStorage.setItem('layout', type);
-      goToPage('actionPage');
-    }
+<script>
+// State and DOM references
+let rocketParts = { nose: false, bodies: 0, fins: 0 };
+const pages = ['layoutSelection','actionSelection','builder','simulation'];
+const logo = document.getElementById('logo');
+const changeLayoutBtn = document.getElementById('changeLayout');
+const themeToggleBtn = document.getElementById('themeToggle');
+const layoutSelection = document.getElementById('layoutSelection');
+const actionSelection = document.getElementById('actionSelection');
+const builderPage = document.getElementById('builder');
+const simPage = document.getElementById('simulation');
+const assemblyArea = document.getElementById('assemblyArea');
+const parts = document.querySelectorAll('#partsPanel .part');
+const emailInput = document.getElementById('emailInput');
+const saveBtn = document.getElementById('saveBtn');
+const launchFromBuilderBtn = document.getElementById('launchFromBuilder');
+const startLaunchBtn = document.getElementById('startLaunch');
+const massSlider = document.getElementById('massSlider');
+const massVal = document.getElementById('massVal');
+const motorClass = document.getElementById('motorClass');
+const simCanvas = document.getElementById('simCanvas');
+const ctx = simCanvas.getContext('2d');
+const statusBar = document.getElementById('statusBar');
+const phoneBtn = document.getElementById('phoneBtn');
+const computerBtn = document.getElementById('computerBtn');
+const buildBtn = document.getElementById('buildBtn');
+const launchBtn = document.getElementById('launchBtn');
 
-    function toggleTheme(isDark) {
-      document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
-      localStorage.setItem('theme', isDark ? 'dark' : 'light');
-    }
+// Initialize layout and theme from storage
+document.addEventListener('DOMContentLoaded', () => {
+  const savedLayout = localStorage.getItem('layout');
+  const savedTheme = localStorage.getItem('theme');
+  if (savedTheme === 'dark') document.body.classList.add('dark-theme');
+  if (savedLayout === 'phone') {
+    document.body.classList.add('layout-phone');
+    showPage('actionSelection');
+  } else if (savedLayout === 'computer') {
+    document.body.classList.add('layout-desktop');
+    showPage('actionSelection');
+  } else {
+    showPage('layoutSelection');
+  }
+  massVal.textContent = massSlider.value;
+});
 
-    function loadTheme() {
-      const saved = localStorage.getItem('theme');
-      if (saved === 'dark') {
-        document.documentElement.setAttribute('data-theme', 'dark');
-        document.querySelector('#themeToggle input').checked = true;
-      }
-    }
+// Page navigation
+function showPage(id) {
+  pages.forEach(pid => document.getElementById(pid).style.display = (pid===id ? 'block' : 'none'));
+  // Show/hide logo and buttons
+  if (id === 'layoutSelection') {
+    logo.style.display = 'none';
+    changeLayoutBtn.style.display = 'none';
+  } else {
+    logo.style.display = 'block';
+    changeLayoutBtn.style.display = 'inline-block';
+  }
+}
 
-    function startCountdown() {
-      goToPage('launchPage');
-      const countdownEl = document.getElementById('countdown');
-      let count = 3;
-      const audio = new Audio("https://actions.google.com/sounds/v1/alarms/alarm_clock.ogg");
-      const interval = setInterval(() => {
-        countdownEl.textContent = count;
-        if (count === 0) {
-          clearInterval(interval);
-          audio.play();
-          startLaunch();
-        }
-        count--;
-      }, 1000);
-    }
+// Layout selection handlers
+phoneBtn.onclick = () => { localStorage.setItem('layout','phone'); document.body.classList.add('layout-phone'); showPage('actionSelection'); };
+computerBtn.onclick = () => { localStorage.setItem('layout','computer'); document.body.classList.add('layout-desktop'); showPage('actionSelection'); };
 
-    function startLaunch() {
-      const canvas = document.getElementById("launchCanvas");
-      const ctx = canvas.getContext("2d");
-      let y = 500;
-      const rocket = () => {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.fillStyle = "black";
-        ctx.fillRect(190, y, 20, 50);
-        y -= 2;
-        if (y > 50) {
-          requestAnimationFrame(rocket);
-        } else {
-          showParachute();
-        }
-      };
-      rocket();
-    }
+// Action selection handlers
+buildBtn.onclick = () => { showPage('builder'); };
+launchBtn.onclick = () => { 
+  // Ensure default rocket exists
+  rocketParts = {nose:true, bodies:1, fins:1};
+  renderAssembly();
+  showPage('simulation');
+};
 
-    function showParachute() {
-      const ctx = document.getElementById("launchCanvas").getContext("2d");
-      ctx.fillStyle = "red";
-      ctx.beginPath();
-      ctx.arc(200, 50, 30, 0, Math.PI, true);
-      ctx.fill();
-    }
+// Drag & Drop Rocket Builder
+parts.forEach(part => {
+  part.addEventListener('dragstart', e => {
+    e.dataTransfer.setData('text/plain', part.dataset.type);
+  });
+});
+assemblyArea.addEventListener('dragover', e => { e.preventDefault(); });
+assemblyArea.addEventListener('drop', e => {
+  e.preventDefault();
+  const type = e.dataTransfer.getData('text/plain');
+  if (type === 'nose') rocketParts.nose = true;
+  else if (type === 'body') rocketParts.bodies++;
+  else if (type === 'fin') rocketParts.fins++;
+  renderAssembly();
+});
+function renderAssembly() {
+  assemblyArea.innerHTML = '';
+  if (rocketParts.nose) {
+    const noseEl = document.createElement('div');
+    noseEl.className = 'part nose'; assemblyArea.appendChild(noseEl);
+  }
+  for (let i=0; i<rocketParts.bodies; i++) {
+    const bodyEl = document.createElement('div');
+    bodyEl.className = 'part body'; assemblyArea.appendChild(bodyEl);
+  }
+  for (let i=0; i<rocketParts.fins; i++) {
+    const finEl = document.createElement('div');
+    finEl.className = 'part fin'; assemblyArea.appendChild(finEl);
+  }
+}
 
-    function promptSave() {
-      const email = prompt("Enter your email to save your rocket:");
-      if (email) {
-        alert("Rocket saved to " + email);
-      } else {
-        alert("Save cancelled.");
-      }
-    }
+// Save via email
+saveBtn.onclick = () => {
+  const email = emailInput.value.trim();
+  if (!email) { alert('Enter a valid email.'); return; }
+  const body = encodeURIComponent(
+    `Rocket Design:\n` +
+    `Nose Cone: ${rocketParts.nose ? 'Yes' : 'No'}\n` +
+    `Body segments: ${rocketParts.bodies}\n` +
+    `Fins: ${rocketParts.fins}`
+  );
+  window.location.href = `mailto:${email}?subject=My%20Rocket%20Design&body=${body}`;
+};
 
-    window.onload = loadTheme;
-  </script>
+// Launch from builder
+launchFromBuilderBtn.onclick = () => {
+  showPage('simulation');
+};
+
+// Theme toggle
+function toggleTheme() {
+  document.body.classList.toggle('dark-theme');
+  const mode = document.body.classList.contains('dark-theme') ? 'dark' : 'light';
+  localStorage.setItem('theme', mode);
+}
+
+// Update mass display
+massSlider.addEventListener('input', () => {
+  massVal.textContent = massSlider.value;
+});
+
+// Launch Simulation Logic
+let simInterval = null;
+startLaunchBtn.onclick = () => {
+  // Prepare simulation variables
+  let mass = parseFloat(massSlider.value);
+  // Motor impulse lookup (N·s) for classes A–M
+  const impulseMap = {A:2.5,B:5,C:10,D:20,E:40,F:80,G:160,H:320,I:640,J:1280,K:2560,L:5120,M:10240};
+  const impulse = impulseMap[motorClass.value] || 10;
+  const burnTime = 2; // assume 2s burn
+  const thrust = impulse / burnTime; // average thrust (N)
+  let time = 0, velocity = 0, altitude = 0;
+  const g = 9.81;
+  let parachuteOpen = false;
+  // Countdown display
+  let count = 3;
+  const countdownInterval = setInterval(() => {
+    statusBar.textContent = count > 0 ? `${count}` : 'Launch!';
+    if (count-- <= 0) {
+      clearInterval(countdownInterval);
+      // Play launch sound (simple beep)
+      playBeep();
+      // Start simulation loop
+      simInterval = setInterval(simStep, 20);
+    }
+  }, 1000);
+
+  function simStep() {
+    // Physics update
+    const dt = 0.02;
+    // Apply thrust if burning
+    let currentThrust = (time < burnTime) ? thrust : 0;
+    // Simple drag: F_drag = 0.5 * rho * Cd * A * v^2 (we combine constants)
+    const rho = 1.2, CdA = 0.5; // combined drag coefficient * area
+    const drag = CdA * velocity * velocity * (velocity > 0 ? 1 : -1);
+    // net acceleration (m/s^2)
+    let accel = (currentThrust - drag) / mass - g;
+    velocity += accel * dt;
+    altitude += velocity * dt;
+    time += dt;
+    // Open parachute at peak (when velocity changes direction)
+    if (!parachuteOpen && time > burnTime && velocity < 0) {
+      parachuteOpen = true;
+    }
+    // Draw rocket and parachute
+    drawRocket(altitude, parachuteOpen);
+    // Update status
+    statusBar.textContent = `Time: ${time.toFixed(1)} s | Altitude: ${Math.max(0, altitude).toFixed(1)} m | Speed: ${velocity.toFixed(1)} m/s`;
+    // Stop when rocket hits ground after burnout
+    if (altitude <= 0 && time > burnTime + 0.1) {
+      clearInterval(simInterval);
+    }
+  }
+};
+
+// Draw rocket shape on canvas based on altitude
+function drawRocket(alt, parachute) {
+  const w = simCanvas.width, h = simCanvas.height;
+  ctx.clearRect(0, 0, w, h);
+  // Map altitude to vertical position (y=0 at ground baseline)
+  const scale = 2; // 2 pixels per meter
+  const y = h - alt * scale;
+  // Draw rocket from bottom to top
+  ctx.save();
+  ctx.translate(w/2, y);
+  // Draw fin (a triangle)
+  if (rocketParts.fins > 0) {
+    ctx.beginPath();
+    ctx.moveTo(-15,0); ctx.lineTo(0, -25); ctx.lineTo(15,0);
+    ctx.fillStyle = 'navy'; ctx.fill();
+  }
+  // Draw body segments
+  const bodySegs = rocketParts.bodies || 1;
+  ctx.fillStyle = 'gray';
+  for (let i=0; i<bodySegs; i++) {
+    ctx.fillRect(-25, -30 - i*50, 50, 50);
+  }
+  // Draw nose cone on top
+  if (rocketParts.nose) {
+    ctx.beginPath();
+    ctx.moveTo(-25, -30 - bodySegs*50);
+    ctx.lineTo(0, -80 - bodySegs*50);
+    ctx.lineTo(25, -30 - bodySegs*50);
+    ctx.fillStyle = 'red'; ctx.fill();
+  }
+  ctx.restore();
+  // Draw parachute if deployed
+  if (parachute) {
+    ctx.save();
+    const canopyRadius = 30;
+    ctx.beginPath();
+    ctx.arc(w/2, y - 50, canopyRadius, 0, Math.PI, true);
+    ctx.fillStyle = 'orange'; ctx.fill();
+    // Lines connecting parachute to rocket
+    ctx.beginPath();
+    ctx.moveTo(w/2 - canopyRadius, y - 50);
+    ctx.lineTo(w/2, y);
+    ctx.lineTo(w/2 + canopyRadius, y - 50);
+    ctx.strokeStyle = '#000'; ctx.stroke();
+    ctx.restore();
+  }
+}
+
+// Simple beep using Web Audio API
+function playBeep() {
+  const AudioCtx = window.AudioContext || window.webkitAudioContext;
+  const ctx = new AudioCtx();
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.frequency.value = 100;
+  osc.type = 'sine';
+  osc.connect(gain);
+  gain.connect(ctx.destination);
+  osc.start();
+  osc.stop(ctx.currentTime + 0.2);
+}
+
+// Initialize by showing/hiding elements
+showPage('layoutSelection');
+</script>
 </body>
 </html>
