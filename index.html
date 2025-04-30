@@ -1,263 +1,153 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Rocket Simulator</title>
   <style>
     body {
       margin: 0;
+      background: #87CEEB;
       font-family: sans-serif;
-      background: #eef;
-      overflow-x: hidden;
-    }
-    header {
-      display: flex;
-      align-items: center;
-      background: #222;
-      color: white;
-      padding: 10px;
-    }
-    header img {
-      height: 40px;
-      margin-right: 10px;
-    }
-    .welcome-screen {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      height: 100vh;
-      background: #333;
-      color: white;
-    }
-    .welcome-screen h1 {
-      margin-bottom: 20px;
-    }
-    .welcome-screen button {
-      padding: 15px 30px;
-      font-size: 18px;
-      margin: 10px;
-      cursor: pointer;
-      border: none;
-      border-radius: 5px;
-      background-color: #555;
-      color: white;
-    }
-    #simulator, #builder {
-      display: none;
-      padding: 20px;
-    }
-    #simulator.active, #builder.active {
-      display: block;
-    }
-    .rocket-part {
-      width: 60px;
-      height: 60px;
-      margin: 5px;
-      background: #ccc;
-      border: 2px solid #666;
-      display: inline-block;
-      cursor: grab;
-    }
-    #drop-zone {
-      min-height: 300px;
-      border: 2px dashed #aaa;
-      margin-top: 20px;
-      padding: 10px;
-      background: #fff;
-    }
-    #popup {
-      position: fixed;
-      top: 20%;
-      left: 50%;
-      transform: translateX(-50%);
-      background: white;
-      border: 2px solid #666;
-      padding: 20px;
-      display: none;
-      z-index: 100;
     }
     canvas {
-      background: skyblue;
       display: block;
       margin: 0 auto;
+      background: linear-gradient(#87CEEB, #ffffff);
     }
-
-    /* Responsive styles for Phone layout */
-    .phone-layout .rocket-part {
-      width: 40px;
-      height: 40px;
-      font-size: 12px;
+    #launchButton {
+      position: absolute;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 10px 20px;
+      font-size: 18px;
+      cursor: pointer;
     }
-    .phone-layout #drop-zone {
-      min-height: 200px;
-    }
-    .phone-layout canvas {
-      width: 100%;
-      height: auto;
-    }
-
-    /* Responsive styles for Computer layout */
-    .computer-layout .rocket-part {
-      width: 60px;
-      height: 60px;
-      font-size: 16px;
-    }
-    .computer-layout #drop-zone {
-      min-height: 300px;
-    }
-    .computer-layout canvas {
-      width: 300px;
-      height: 600px;
+    #countdown {
+      position: absolute;
+      top: 70px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 30px;
+      font-weight: bold;
+      color: red;
     }
   </style>
 </head>
 <body>
+  <button id="launchButton">Launch</button>
+  <div id="countdown"></div>
+  <canvas id="simCanvas" width="400" height="600"></canvas>
 
-<div class="welcome-screen" id="welcome-screen">
-  <h1>Welcome to Rocket Simulator</h1>
-  <p>Please select your device:</p>
-  <button onclick="selectLayout('phone')">Phone</button>
-  <button onclick="selectLayout('computer')">Computer</button>
-</div>
+  <script>
+    const canvas = document.getElementById("simCanvas");
+    const ctx = canvas.getContext("2d");
 
-<div id="main-content" style="display: none;">
-  <header>
-    <img src="logo.png" alt="Logo">
-    <h1>Rocket Simulator</h1>
-  </header>
+    let rocket = {
+      x: canvas.width / 2 - 10,
+      y: canvas.height - 60,
+      width: 20,
+      height: 60,
+      velocity: 0,
+      acceleration: 0,
+      mass: 1.5, // kg
+      thrust: 15, // N
+      burnTime: 2, // seconds
+      drag: 0.4,
+      deployedParachute: false,
+    };
 
-  <div id="simulator" class="active">
-    <button onclick="startSimulation()">Launch Rocket</button>
-    <button onclick="showBuilder()">Build Rocket</button>
-    <canvas id="flightCanvas" width="300" height="600"></canvas>
-  </div>
+    const g = 9.81; // gravity
+    let time = 0;
+    let dt = 0.02;
+    let maxY = rocket.y;
+    let flying = false;
+    let countdown = 3;
+    let parachuteImage = new Image();
+    parachuteImage.src = "https://upload.wikimedia.org/wikipedia/commons/0/00/Parachute_icon.png";
 
-  <div id="builder">
-    <h2>Rocket Builder</h2>
-    <p>Drag parts below into the rocket area. <strong>To save your rocket, you must enter your email.</strong></p>
-    <div>
-      <div class="rocket-part" draggable="true" data-type="nose" style="background:#f33;">Nose</div>
-      <div class="rocket-part" draggable="true" data-type="body" style="background:#3af;">Body</div>
-      <div class="rocket-part" draggable="true" data-type="fin" style="background:#3f3;">Fin</div>
-    </div>
-    <div id="drop-zone" ondragover="event.preventDefault()" ondrop="drop(event)">
-      <p>Drop parts here...</p>
-    </div>
-    <br>
-    <button onclick="showEmailPopup()">Save Rocket</button>
-    <button onclick="showSimulator()">Back to Launch</button>
-  </div>
-
-  <div id="popup">
-    <p>Enter your email to save your design:</p>
-    <input type="email" id="email" placeholder="you@example.com">
-    <br><br>
-    <button onclick="saveDesign()">Submit</button>
-  </div>
-</div>
-
-<script>
-  function selectLayout(device) {
-    document.getElementById('welcome-screen').style.display = 'none';
-    document.getElementById('main-content').style.display = 'block';
-    if (device === 'phone') {
-      document.body.classList.add('phone-layout');
-    } else {
-      document.body.classList.add('computer-layout');
-    }
-  }
-
-  const flightCanvas = document.getElementById("flightCanvas");
-  const ctx = flightCanvas.getContext("2d");
-
-  function startSimulation() {
-    let y = 550, velocity = -8, gravity = 0.2;
-    const rocketH = 60;
-
-    let chuteOpen = false;
-    let interval = setInterval(() => {
-      ctx.clearRect(0, 0, flightCanvas.width, flightCanvas.height);
-
-      if (velocity >= 0 && !chuteOpen) {
-        chuteOpen = true;
-      }
-
-      if (chuteOpen && velocity < 5) velocity += gravity * 2;
-      else velocity += gravity;
-
-      y += velocity;
-
-      if (y > 550) {
-        clearInterval(interval);
-        y = 550;
-      }
-
+    function drawRocket() {
       ctx.fillStyle = "gray";
-      ctx.fillRect(140, y, 20, rocketH);
-      ctx.fillStyle = "orange";
-      ctx.beginPath();
-      ctx.moveTo(140, y);
-      ctx.lineTo(130, y + 20);
-      ctx.lineTo(140, y + 40);
-      ctx.fill();
+      ctx.fillRect(rocket.x, rocket.y, rocket.width, rocket.height);
+    }
 
-      if (chuteOpen) {
-        ctx.fillStyle = "white";
-        ctx.beginPath();
-        ctx.arc(150, y - 20, 20, 0, Math.PI, true);
-        ctx.fill();
+    function drawParachute() {
+      if (rocket.deployedParachute) {
+        ctx.drawImage(parachuteImage, rocket.x - 15, rocket.y - 40, 50, 50);
+      }
+    }
+
+    function updateRocket() {
+      if (time < rocket.burnTime) {
+        rocket.acceleration = rocket.thrust / rocket.mass - g;
+      } else {
+        rocket.acceleration = -g - rocket.drag * rocket.velocity;
+        if (!rocket.deployedParachute && rocket.velocity < -1) {
+          rocket.deployedParachute = true;
+          rocket.drag = 1.8;
+        }
       }
 
-    }, 30);
-  }
+      rocket.velocity += rocket.acceleration * dt;
+      rocket.y -= rocket.velocity;
 
-  function showBuilder() {
-    document.getElementById("simulator").classList.remove("active");
-    document.getElementById("builder").classList.add("active");
-  }
+      if (rocket.y > canvas.height - 60) {
+        rocket.y = canvas.height - 60;
+        rocket.velocity = 0;
+        flying = false;
+      }
 
-  function showSimulator() {
-    document.getElementById("builder").classList.remove("active");
-    document.getElementById("simulator").classList.add("active");
-  }
-
-  function drop(event) {
-    event.preventDefault();
-    const type = event.dataTransfer.getData("type");
-    const part = document.createElement("div");
-    part.className = "rocket-part";
-    part.textContent = type;
-    part.style.background = "#ddd";
-    part.setAttribute("data-type", type);
-    event.target.appendChild(part);
-  }
-
-  document.addEventListener("DOMContentLoaded", () => {
-    document.querySelectorAll(".rocket-part").forEach(part => {
-      part.addEventListener("dragstart", e => {
-        e.dataTransfer.setData("type", part.getAttribute("data-type"));
-      });
-    });
-  });
-
-  function showEmailPopup() {
-    document.getElementById("popup").style.display = "block";
-  }
-
-  function saveDesign() {
-    const email = document.getElementById("email").value;
-    if (!email.includes("@")) {
-      alert("Please enter a valid email.");
-      return;
+      time += dt;
     }
-    const parts = Array.from(document.querySelectorAll("#drop-zone .rocket-part")).map(p => p.getAttribute("data-type"));
-    localStorage.setItem("rocketDesign", JSON.stringify({ email, parts }));
-    alert("Rocket design saved!");
-    document.getElementById("popup").style.display = "none";
-  }
-</script>
 
+    function drawScene() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Ground
+      ctx.fillStyle = "green";
+      ctx.fillRect(0, canvas.height - 20, canvas.width, 20);
+
+      drawRocket();
+      drawParachute();
+    }
+
+    function animate() {
+      if (flying) {
+        updateRocket();
+        drawScene();
+        requestAnimationFrame(animate);
+      }
+    }
+
+    function startCountdown() {
+      document.getElementById("countdown").textContent = countdown;
+      let interval = setInterval(() => {
+        countdown--;
+        if (countdown === 0) {
+          clearInterval(interval);
+          document.getElementById("countdown").textContent = "";
+          flying = true;
+          animate();
+        } else {
+          document.getElementById("countdown").textContent = countdown;
+        }
+      }, 1000);
+    }
+
+    document.getElementById("launchButton").addEventListener("click", () => {
+      if (!flying) {
+        rocket.y = canvas.height - 60;
+        rocket.velocity = 0;
+        rocket.acceleration = 0;
+        time = 0;
+        rocket.deployedParachute = false;
+        countdown = 3;
+        startCountdown();
+      }
+    });
+
+    drawScene();
+  </script>
 </body>
 </html>
