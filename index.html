@@ -1,145 +1,263 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Rocket Simulator & Builder</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Rocket Simulator</title>
   <style>
     body {
       margin: 0;
       font-family: sans-serif;
-      background: #111;
-      color: white;
+      background: #eef;
       overflow-x: hidden;
     }
     header {
       display: flex;
       align-items: center;
+      background: #222;
+      color: white;
       padding: 10px;
-      background-color: #222;
     }
-    #logo {
+    header img {
       height: 40px;
-      margin-right: 20px;
+      margin-right: 10px;
     }
-    .container {
-      text-align: center;
-      padding: 30px;
+    .welcome-screen {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      background: #333;
+      color: white;
     }
-    button {
-      padding: 10px 20px;
-      font-size: 16px;
+    .welcome-screen h1 {
+      margin-bottom: 20px;
+    }
+    .welcome-screen button {
+      padding: 15px 30px;
+      font-size: 18px;
       margin: 10px;
       cursor: pointer;
+      border: none;
+      border-radius: 5px;
+      background-color: #555;
+      color: white;
     }
-    #rocket-builder {
+    #simulator, #builder {
       display: none;
-      position: fixed;
-      top: 0; left: 0;
-      width: 100%; height: 100%;
-      background: rgba(0,0,0,0.9);
-      z-index: 9999;
-      color: black;
-    }
-    #builder-content {
-      background: white;
-      width: 80%;
-      margin: 50px auto;
       padding: 20px;
-      border-radius: 8px;
-      text-align: left;
     }
-    .part {
-      width: 60px; height: 60px;
-      background: lightgray;
-      margin: 10px;
-      text-align: center;
-      line-height: 60px;
-      cursor: grab;
-    }
-    #canvas {
-      border: 1px solid #ccc;
-      width: 100%; height: 400px;
-      background: #eef;
-      position: relative;
+    #simulator.active, #builder.active {
+      display: block;
     }
     .rocket-part {
-      position: absolute;
-      width: 50px;
-      height: 50px;
-      background: red;
+      width: 60px;
+      height: 60px;
+      margin: 5px;
+      background: #ccc;
+      border: 2px solid #666;
+      display: inline-block;
+      cursor: grab;
     }
-    .notice {
-      font-size: 14px;
-      color: #ccc;
-      margin-top: 10px;
+    #drop-zone {
+      min-height: 300px;
+      border: 2px dashed #aaa;
+      margin-top: 20px;
+      padding: 10px;
+      background: #fff;
+    }
+    #popup {
+      position: fixed;
+      top: 20%;
+      left: 50%;
+      transform: translateX(-50%);
+      background: white;
+      border: 2px solid #666;
+      padding: 20px;
+      display: none;
+      z-index: 100;
+    }
+    canvas {
+      background: skyblue;
+      display: block;
+      margin: 0 auto;
+    }
+
+    /* Responsive styles for Phone layout */
+    .phone-layout .rocket-part {
+      width: 40px;
+      height: 40px;
+      font-size: 12px;
+    }
+    .phone-layout #drop-zone {
+      min-height: 200px;
+    }
+    .phone-layout canvas {
+      width: 100%;
+      height: auto;
+    }
+
+    /* Responsive styles for Computer layout */
+    .computer-layout .rocket-part {
+      width: 60px;
+      height: 60px;
+      font-size: 16px;
+    }
+    .computer-layout #drop-zone {
+      min-height: 300px;
+    }
+    .computer-layout canvas {
+      width: 300px;
+      height: 600px;
     }
   </style>
 </head>
 <body>
+
+<div class="welcome-screen" id="welcome-screen">
+  <h1>Welcome to Rocket Simulator</h1>
+  <p>Please select your device:</p>
+  <button onclick="selectLayout('phone')">Phone</button>
+  <button onclick="selectLayout('computer')">Computer</button>
+</div>
+
+<div id="main-content" style="display: none;">
   <header>
-    <img id="logo" src="logo.png" alt="Logo" />
-    <h1>Rocket Launch & Builder</h1>
+    <img src="logo.png" alt="Logo">
+    <h1>Rocket Simulator</h1>
   </header>
 
-  <div class="container">
-    <h2>Launch Simulator</h2>
-    <p>[Insert launch animation/simulator here]</p>
-
-    <button onclick="showBuilder()">Open Rocket Builder</button>
+  <div id="simulator" class="active">
+    <button onclick="startSimulation()">Launch Rocket</button>
+    <button onclick="showBuilder()">Build Rocket</button>
+    <canvas id="flightCanvas" width="300" height="600"></canvas>
   </div>
 
-  <div id="rocket-builder">
-    <div id="builder-content">
-      <h2>Rocket Builder</h2>
-      <p>Drag and drop parts into the canvas. Parts will snap into place.</p>
-      <div style="display:flex;gap:20px;">
-        <div>
-          <div class="part" draggable="true" ondragstart="drag(event)" id="nose">Nose</div>
-          <div class="part" draggable="true" ondragstart="drag(event)" id="body">Body</div>
-          <div class="part" draggable="true" ondragstart="drag(event)" id="fin">Fin</div>
-        </div>
-        <div id="canvas" ondrop="drop(event)" ondragover="allowDrop(event)"></div>
-      </div>
-      <div class="notice">To save your rocket, please enter your email when prompted.</div>
-      <button onclick="promptEmail()">Save Rocket</button>
-      <button onclick="hideBuilder()">Close</button>
+  <div id="builder">
+    <h2>Rocket Builder</h2>
+    <p>Drag parts below into the rocket area. <strong>To save your rocket, you must enter your email.</strong></p>
+    <div>
+      <div class="rocket-part" draggable="true" data-type="nose" style="background:#f33;">Nose</div>
+      <div class="rocket-part" draggable="true" data-type="body" style="background:#3af;">Body</div>
+      <div class="rocket-part" draggable="true" data-type="fin" style="background:#3f3;">Fin</div>
     </div>
+    <div id="drop-zone" ondragover="event.preventDefault()" ondrop="drop(event)">
+      <p>Drop parts here...</p>
+    </div>
+    <br>
+    <button onclick="showEmailPopup()">Save Rocket</button>
+    <button onclick="showSimulator()">Back to Launch</button>
   </div>
 
-  <script>
-    function showBuilder() {
-      document.getElementById("rocket-builder").style.display = "block";
-    }
-    function hideBuilder() {
-      document.getElementById("rocket-builder").style.display = "none";
-    }
-    function allowDrop(ev) {
-      ev.preventDefault();
-    }
-    function drag(ev) {
-      ev.dataTransfer.setData("text", ev.target.id);
-    }
-    function drop(ev) {
-      ev.preventDefault();
-      var data = ev.dataTransfer.getData("text");
-      var part = document.getElementById(data).cloneNode(true);
-      part.style.position = "absolute";
-      part.style.left = (ev.offsetX - 25) + "px";
-      part.style.top = (ev.offsetY - 25) + "px";
-      part.classList.add("rocket-part");
-      document.getElementById("canvas").appendChild(part);
-    }
+  <div id="popup">
+    <p>Enter your email to save your design:</p>
+    <input type="email" id="email" placeholder="you@example.com">
+    <br><br>
+    <button onclick="saveDesign()">Submit</button>
+  </div>
+</div>
 
-    function promptEmail() {
-      const email = prompt("Enter your email to save your rocket:");
-      if (email) {
-        alert("Rocket saved for: " + email);
-        // Placeholder — here you would hook into a backend or storage
-      } else {
-        alert("Save cancelled.");
-      }
+<script>
+  function selectLayout(device) {
+    document.getElementById('welcome-screen').style.display = 'none';
+    document.getElementById('main-content').style.display = 'block';
+    if (device === 'phone') {
+      document.body.classList.add('phone-layout');
+    } else {
+      document.body.classList.add('computer-layout');
     }
-  </script>
+  }
+
+  const flightCanvas = document.getElementById("flightCanvas");
+  const ctx = flightCanvas.getContext("2d");
+
+  function startSimulation() {
+    let y = 550, velocity = -8, gravity = 0.2;
+    const rocketH = 60;
+
+    let chuteOpen = false;
+    let interval = setInterval(() => {
+      ctx.clearRect(0, 0, flightCanvas.width, flightCanvas.height);
+
+      if (velocity >= 0 && !chuteOpen) {
+        chuteOpen = true;
+      }
+
+      if (chuteOpen && velocity < 5) velocity += gravity * 2;
+      else velocity += gravity;
+
+      y += velocity;
+
+      if (y > 550) {
+        clearInterval(interval);
+        y = 550;
+      }
+
+      ctx.fillStyle = "gray";
+      ctx.fillRect(140, y, 20, rocketH);
+      ctx.fillStyle = "orange";
+      ctx.beginPath();
+      ctx.moveTo(140, y);
+      ctx.lineTo(130, y + 20);
+      ctx.lineTo(140, y + 40);
+      ctx.fill();
+
+      if (chuteOpen) {
+        ctx.fillStyle = "white";
+        ctx.beginPath();
+        ctx.arc(150, y - 20, 20, 0, Math.PI, true);
+        ctx.fill();
+      }
+
+    }, 30);
+  }
+
+  function showBuilder() {
+    document.getElementById("simulator").classList.remove("active");
+    document.getElementById("builder").classList.add("active");
+  }
+
+  function showSimulator() {
+    document.getElementById("builder").classList.remove("active");
+    document.getElementById("simulator").classList.add("active");
+  }
+
+  function drop(event) {
+    event.preventDefault();
+    const type = event.dataTransfer.getData("type");
+    const part = document.createElement("div");
+    part.className = "rocket-part";
+    part.textContent = type;
+    part.style.background = "#ddd";
+    part.setAttribute("data-type", type);
+    event.target.appendChild(part);
+  }
+
+  document.addEventListener("DOMContentLoaded", () => {
+    document.querySelectorAll(".rocket-part").forEach(part => {
+      part.addEventListener("dragstart", e => {
+        e.dataTransfer.setData("type", part.getAttribute("data-type"));
+      });
+    });
+  });
+
+  function showEmailPopup() {
+    document.getElementById("popup").style.display = "block";
+  }
+
+  function saveDesign() {
+    const email = document.getElementById("email").value;
+    if (!email.includes("@")) {
+      alert("Please enter a valid email.");
+      return;
+    }
+    const parts = Array.from(document.querySelectorAll("#drop-zone .rocket-part")).map(p => p.getAttribute("data-type"));
+    localStorage.setItem("rocketDesign", JSON.stringify({ email, parts }));
+    alert("Rocket design saved!");
+    document.getElementById("popup").style.display = "none";
+  }
+</script>
+
 </body>
 </html>
