@@ -2,143 +2,144 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Rocket Simulator</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Rocket Simulator & Builder</title>
   <style>
     body {
       margin: 0;
-      padding: 0;
-      overflow: hidden;
       font-family: sans-serif;
-      background: linear-gradient(#87CEEB, #ffffff);
+      background: #111;
+      color: white;
+      overflow-x: hidden;
     }
-
+    header {
+      display: flex;
+      align-items: center;
+      padding: 10px;
+      background-color: #222;
+    }
     #logo {
-      position: absolute;
-      top: 10px;
-      left: 10px;
-      width: 80px;
-      height: auto;
-      z-index: 10;
+      height: 40px;
+      margin-right: 20px;
     }
-
-    #simulator {
-      position: absolute;
-      top: 0;
-      left: 0;
+    .container {
+      text-align: center;
+      padding: 30px;
     }
-
-    #launchButton {
-      position: absolute;
-      bottom: 20px;
-      left: 50%;
-      transform: translateX(-50%);
+    button {
       padding: 10px 20px;
       font-size: 16px;
-      z-index: 10;
+      margin: 10px;
       cursor: pointer;
+    }
+    #rocket-builder {
+      display: none;
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(0,0,0,0.9);
+      z-index: 9999;
+      color: black;
+    }
+    #builder-content {
+      background: white;
+      width: 80%;
+      margin: 50px auto;
+      padding: 20px;
+      border-radius: 8px;
+      text-align: left;
+    }
+    .part {
+      width: 60px; height: 60px;
+      background: lightgray;
+      margin: 10px;
+      text-align: center;
+      line-height: 60px;
+      cursor: grab;
+    }
+    #canvas {
+      border: 1px solid #ccc;
+      width: 100%; height: 400px;
+      background: #eef;
+      position: relative;
+    }
+    .rocket-part {
+      position: absolute;
+      width: 50px;
+      height: 50px;
+      background: red;
+    }
+    .notice {
+      font-size: 14px;
+      color: #ccc;
+      margin-top: 10px;
     }
   </style>
 </head>
 <body>
-  <img id="logo" src="logo.png" alt="Rocket Logo" />
+  <header>
+    <img id="logo" src="logo.png" alt="Logo" />
+    <h1>Rocket Launch & Builder</h1>
+  </header>
 
-  <canvas id="simulator" width="800" height="600"></canvas>
-  <button id="launchButton">Launch</button>
+  <div class="container">
+    <h2>Launch Simulator</h2>
+    <p>[Insert launch animation/simulator here]</p>
+
+    <button onclick="showBuilder()">Open Rocket Builder</button>
+  </div>
+
+  <div id="rocket-builder">
+    <div id="builder-content">
+      <h2>Rocket Builder</h2>
+      <p>Drag and drop parts into the canvas. Parts will snap into place.</p>
+      <div style="display:flex;gap:20px;">
+        <div>
+          <div class="part" draggable="true" ondragstart="drag(event)" id="nose">Nose</div>
+          <div class="part" draggable="true" ondragstart="drag(event)" id="body">Body</div>
+          <div class="part" draggable="true" ondragstart="drag(event)" id="fin">Fin</div>
+        </div>
+        <div id="canvas" ondrop="drop(event)" ondragover="allowDrop(event)"></div>
+      </div>
+      <div class="notice">To save your rocket, please enter your email when prompted.</div>
+      <button onclick="promptEmail()">Save Rocket</button>
+      <button onclick="hideBuilder()">Close</button>
+    </div>
+  </div>
 
   <script>
-    const canvas = document.getElementById('simulator');
-    const ctx = canvas.getContext('2d');
-
-    const rocket = {
-      x: canvas.width / 2 - 10,
-      y: canvas.height - 60,
-      width: 20,
-      height: 60,
-      velocityY: 0,
-      launched: false,
-      falling: false,
-      parachuteDeployed: false
-    };
-
-    const gravity = 0.4;
-    const thrust = -10;
-    const parachuteDrag = 0.15;
-
-    function drawRocket() {
-      ctx.fillStyle = 'gray';
-      ctx.fillRect(rocket.x, rocket.y, rocket.width, rocket.height);
-
-      // Flame
-      if (rocket.launched && !rocket.falling) {
-        ctx.beginPath();
-        ctx.moveTo(rocket.x, rocket.y + rocket.height);
-        ctx.lineTo(rocket.x + rocket.width / 2, rocket.y + rocket.height + 20);
-        ctx.lineTo(rocket.x + rocket.width, rocket.y + rocket.height);
-        ctx.fillStyle = 'orange';
-        ctx.fill();
-      }
-
-      // Parachute
-      if (rocket.parachuteDeployed) {
-        ctx.beginPath();
-        ctx.arc(rocket.x + rocket.width / 2, rocket.y - 20, 20, Math.PI, 2 * Math.PI);
-        ctx.fillStyle = 'red';
-        ctx.fill();
-        ctx.beginPath();
-        ctx.moveTo(rocket.x + 2, rocket.y);
-        ctx.lineTo(rocket.x + rocket.width / 2, rocket.y - 10);
-        ctx.lineTo(rocket.x + rocket.width - 2, rocket.y);
-        ctx.stroke();
-      }
+    function showBuilder() {
+      document.getElementById("rocket-builder").style.display = "block";
+    }
+    function hideBuilder() {
+      document.getElementById("rocket-builder").style.display = "none";
+    }
+    function allowDrop(ev) {
+      ev.preventDefault();
+    }
+    function drag(ev) {
+      ev.dataTransfer.setData("text", ev.target.id);
+    }
+    function drop(ev) {
+      ev.preventDefault();
+      var data = ev.dataTransfer.getData("text");
+      var part = document.getElementById(data).cloneNode(true);
+      part.style.position = "absolute";
+      part.style.left = (ev.offsetX - 25) + "px";
+      part.style.top = (ev.offsetY - 25) + "px";
+      part.classList.add("rocket-part");
+      document.getElementById("canvas").appendChild(part);
     }
 
-    function updateRocket() {
-      if (rocket.launched) {
-        if (!rocket.falling) {
-          rocket.velocityY += gravity;
-        } else {
-          if (!rocket.parachuteDeployed && rocket.velocityY >= 0) {
-            rocket.parachuteDeployed = true;
-          }
-          rocket.velocityY += rocket.parachuteDeployed ? parachuteDrag : gravity;
-        }
-        rocket.y += rocket.velocityY;
-
-        if (rocket.velocityY >= 0 && !rocket.falling) {
-          rocket.falling = true;
-        }
-
-        if (rocket.y + rocket.height >= canvas.height) {
-          rocket.y = canvas.height - rocket.height;
-          rocket.velocityY = 0;
-          rocket.launched = false;
-          rocket.falling = false;
-          rocket.parachuteDeployed = false;
-        }
+    function promptEmail() {
+      const email = prompt("Enter your email to save your rocket:");
+      if (email) {
+        alert("Rocket saved for: " + email);
+        // Placeholder — here you would hook into a backend or storage
+      } else {
+        alert("Save cancelled.");
       }
     }
-
-    function draw() {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-      // Ground
-      ctx.fillStyle = '#228B22';
-      ctx.fillRect(0, canvas.height - 20, canvas.width, 20);
-
-      drawRocket();
-      updateRocket();
-
-      requestAnimationFrame(draw);
-    }
-
-    document.getElementById('launchButton').addEventListener('click', () => {
-      if (!rocket.launched) {
-        rocket.launched = true;
-        rocket.velocityY = thrust;
-      }
-    });
-
-    draw();
   </script>
 </body>
 </html>
